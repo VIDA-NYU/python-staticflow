@@ -10,13 +10,9 @@ os.chdir(os.path.abspath(os.path.dirname(__file__)))
 # Need to specify encoding for PY3, which has the worst unicode handling ever
 with io.open('README.rst', encoding='utf-8') as fp:
     description = fp.read()
-req = [
-    'redbaron~=0.6.3',
-    'baron~=0.6.6']
 setup(name='staticflow',
       version='0.1',
       packages=['staticflow'],
-      install_requires=req,
       description="Construct a data flow from static analysis of Python code",
       author="Remi Rampin",
       author_email='remirampin@gmai.com',
