@@ -220,7 +220,22 @@ class _CellVisitor(ast.NodeVisitor):
         if self.in_global_scope or node.id not in self.scopes[-1].locals:
             self.cell.reads.add(node.id)
 
-    # TODO: Calls
+    def visit_Call(self, node):
+        """A function call.
+
+        If calling a method on an object, we mark that object as changed.
+
+        We assume calling a function doesn't change the function, and that in
+        any case arguments are left untouched.
+        """
+        if isinstance(node.func, ast.Attribute):
+            self.assign(node.func.value)
+        else:
+            self.visit(node.func)
+        self.visit(node.args)
+        self.visit(node.keywords)
+        self.visit(node.starargs)
+        self.visit(node.kwargs)
 
 
 class Cell(object):
