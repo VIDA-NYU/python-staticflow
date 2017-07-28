@@ -293,10 +293,14 @@ class _CellVisitor(ast.NodeVisitor):
             self.assign(node.func.value, True)
         else:
             self.visit(node.func)
-        self.visit(node.args)
-        self.visit(node.keywords)
-        self.visit(node.starargs)
-        self.visit(node.kwargs)
+        if node.args:
+            self.visit(node.args)
+        if node.keywords:
+            self.visit(node.keywords)
+        if node.starargs:
+            self.visit(node.starargs)
+        if node.kwargs:
+            self.visit(node.kwargs)
 
 
 class Cell(object):
@@ -343,9 +347,9 @@ class Flow(object):
         self.written_by = {}
 
         if cells is not None:
-            self._cells = list(cells)
-        else:
             self._cells = [self._add(cell) for cell in cells]
+        else:
+            self._cells = []
 
     def _add(self, cell):
         if isinstance(cell, Cell):
