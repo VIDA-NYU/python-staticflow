@@ -12,10 +12,10 @@ del d
 e = 1
 def f(g):
     h = i + 6
-del c
+print(e)
 ''')
         self.assertEqual(cell.reads, set('bdi'))
-        self.assertEqual(cell.writes, set('adef'))
+        self.assertEqual(cell.writes, set('acdef'))
 
 
 class TestFlow(unittest.TestCase):

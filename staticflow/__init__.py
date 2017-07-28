@@ -11,12 +11,14 @@ PY3 = sys.version_info[0] == 3
 
 if PY3:
     irange = range
+    iteritems = lambda d: d.items()
     itervalues = lambda d: d.values()
     int_types = int,
     unicode_ = str
     text = str
 else:
     irange = xrange  # noqa: F821
+    iteritems = lambda d: d.iteritems()
     itervalues = lambda d: d.itervalues()
     int_types = int, long  # noqa: F821
     unicode_ = unicode  # noqa: F821
@@ -38,10 +40,42 @@ class Scope(object):
         self.locals = set()
 
 
+class Symbol(object):
+    DOESNT_EXIST = 0
+    READ = 1
+    CREATED = 2
+    READ_THEN_WRITTEN = 3
+
+    def __init__(self):
+        self.state = self.DOESNT_EXIST
+
+    def read(self):
+        """Mark the variable as read.
+        """
+        if self.state == self.DOESNT_EXIST:
+            self.state = self.READ
+
+    def write(self):
+        """Mark the variable as either READ_THEN_WRITTEN or CREATED.
+        """
+        if self.state == self.DOESNT_EXIST:
+            self.state = self.CREATED
+        elif self.state == self.READ:
+            self.state = self.READ_THEN_WRITTEN
+
+    def is_read(self):
+        return (self.state == self.READ or
+                self.state == self.READ_THEN_WRITTEN)
+
+    def is_written(self):
+        return (self.state == self.CREATED or
+                self.state == self.READ_THEN_WRITTEN)
+
+
 class _CellVisitor(ast.NodeVisitor):
-    def __init__(self, cell):
-        self.cell = cell
+    def __init__(self):
         self.scopes = []
+        self.symbols = {}
 
     @property
     def in_global_scope(self):
@@ -69,22 +103,28 @@ class _CellVisitor(ast.NodeVisitor):
             self.scopes.pop()
             logger.debug("Left local scope (%d)", len(self.scopes))
 
-    def assign(self, symbol):
+    def assign(self, symbol, update=False):
         logger.debug("Assigning %r", symbol)
         if isinstance(symbol, ast.Name):
             symbol = symbol.id
         if isinstance(symbol, text):
             if self.in_global_scope or symbol in self.scopes[-1].globals:
                 logger.debug("Added to writes: %r", symbol)
-                self.cell.writes.add(symbol)
+                try:
+                    state = self.symbols[symbol]
+                except KeyError:
+                    self.symbols[symbol] = state = Symbol()
+                if update:
+                    state.read()
+                state.write()
             else:
                 logger.debug("In local context")
                 self.scopes[-1].locals.add(symbol)
         elif isinstance(symbol, ast.Subscript):
             self.visit(symbol.slice)
-            self.assign(symbol.value)
+            self.assign(symbol.value, True)
         elif isinstance(symbol, ast.Attribute):
-            self.assign(symbol.value)
+            self.assign(symbol.value, True)
 
     # Handlers for specific node types
 
@@ -118,6 +158,15 @@ class _CellVisitor(ast.NodeVisitor):
         Reads and writes the expression (since it needs to exist).
         """
         for target in node.targets:
+            if isinstance(target, ast.Name):
+                try:
+                    state = self.symbols[target.id]
+                except KeyError:
+                    pass
+                else:
+                    state.read()
+                    state.write()
+                    continue
             self.visit(target)
             self.assign(target)
 
@@ -128,6 +177,14 @@ class _CellVisitor(ast.NodeVisitor):
         """
         for target in node.targets:
             self.assign(target)
+        self.visit(node.value)
+
+    def visit_AugAssign(self, node):
+        """Augmented assignment (op-equal operators).
+
+        Reads and writes the target, reads the expression
+        """
+        self.assign(node.target, True)
         self.visit(node.value)
 
     def visit_For(self, node):
@@ -218,7 +275,11 @@ class _CellVisitor(ast.NodeVisitor):
         Mark it as read.
         """
         if self.in_global_scope or node.id not in self.scopes[-1].locals:
-            self.cell.reads.add(node.id)
+            try:
+                state = self.symbols[node.id]
+            except KeyError:
+                self.symbols[node.id] = state = Symbol()
+            state.read()
 
     def visit_Call(self, node):
         """A function call.
@@ -229,7 +290,7 @@ class _CellVisitor(ast.NodeVisitor):
         any case arguments are left untouched.
         """
         if isinstance(node.func, ast.Attribute):
-            self.assign(node.func.value)
+            self.assign(node.func.value, True)
         else:
             self.visit(node.func)
         self.visit(node.args)
@@ -256,8 +317,13 @@ class Cell(object):
         self.reads = set()
         self.writes = set()
 
-        visitor = _CellVisitor(self)
+        visitor = _CellVisitor()
         visitor.visit(self.source)
+        for name, symbol in iteritems(visitor.symbols):
+            if symbol.is_read():
+                self.reads.add(name)
+            if symbol.is_written():
+                self.writes.add(name)
 
         logger.info("Parsing done!\n  reads: %s\n  writes: %s",
                     ', '.join(self.reads),
