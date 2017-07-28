@@ -402,6 +402,9 @@ class Flow(object):
             self._rm(cell)
         del self._cells[i:j]
 
+    def append(self, value):
+        self._cells.append(self._add(value))
+
     def dependencies(self, cell):
         last_assign = {}
         symbols = set(cell.reads)
@@ -429,18 +432,49 @@ class Flow(object):
         return set(itervalues(last_read))
 
     def graph(self):
-        graph = {}
+        graph = []
         last_assign = {}
 
-        for cell in self._cells:
+        for i, cell in enumerate(self._cells):
             deps = set()
             for symbol in cell.reads:
                 try:
                     deps.add(last_assign[symbol])
                 except KeyError:
                     pass
-            graph[cell] = deps
+            graph.append(deps)
             for symbol in cell.writes:
-                last_assign[symbol] = cell
+                last_assign[symbol] = i
 
         return graph
+
+
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+
+    flow = Flow()
+    names = []
+
+    for filename in args:
+        if filename.endswith('.ipynb'):
+            if len(args) != 1:
+                sys.stderr.write("If analysing a Jupyter Notebook, it needs "
+                                 "to be the only file")
+                return 1
+            raise NotImplementedError("No Jupyter Notebook support yet")
+        else:
+            with open(filename, 'rb') as fp:
+                flow.append(fp.read())
+            names.append(filename)
+
+    graph = flow.graph()
+    sys.stdout.write('digraph G {\n')
+    for t, deps in enumerate(graph):
+        for f in deps:
+            sys.stdout.write('    "%s" -> "%s";\n' % (names[f], names[t]))
+    sys.stdout.write('}\n')
+
+
+if __name__ == '__main__':
+    sys.exit(main())
