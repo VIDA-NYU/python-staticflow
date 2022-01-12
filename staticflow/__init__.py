@@ -6,25 +6,6 @@ import sys
 logger = logging.getLogger('staticflow')
 
 
-PY3 = sys.version_info[0] == 3
-
-
-if PY3:
-    irange = range
-    iteritems = lambda d: d.items()
-    itervalues = lambda d: d.values()
-    int_types = int,
-    unicode_ = str
-    text = str
-else:
-    irange = xrange  # noqa: F821
-    iteritems = lambda d: d.iteritems()
-    itervalues = lambda d: d.itervalues()
-    int_types = int, long  # noqa: F821
-    unicode_ = unicode  # noqa: F821
-    text = str, unicode_
-
-
 def default(dct, key, cstr):
     try:
         return dct[key]
@@ -107,7 +88,7 @@ class _CellVisitor(ast.NodeVisitor):
         logger.debug("Assigning %r", symbol)
         if isinstance(symbol, ast.Name):
             symbol = symbol.id
-        if isinstance(symbol, text):
+        if isinstance(symbol, str):
             if self.in_global_scope or symbol in self.scopes[-1].globals:
                 logger.debug("Added to writes: %r", symbol)
                 try:
@@ -323,7 +304,7 @@ class Cell(object):
 
         visitor = _CellVisitor()
         visitor.visit(self.source)
-        for name, symbol in iteritems(visitor.symbols):
+        for name, symbol in visitor.symbols.items():
             if symbol.is_read():
                 self.reads.add(name)
             if symbol.is_written():
@@ -354,7 +335,7 @@ class Flow(object):
     def _add(self, cell):
         if isinstance(cell, Cell):
             pass
-        elif isinstance(cell, text):
+        elif isinstance(cell, str):
             cell = Cell(cell)
         else:
             raise TypeError("Expected iterable of Cell or strings, "
@@ -416,7 +397,7 @@ class Flow(object):
                 last_assign[symbol] = other
             symbols.difference_update(other.writes)
 
-        return set(itervalues(last_assign))
+        return set(last_assign.values())
 
     def dependents(self, cell):
         last_read = {}
@@ -429,7 +410,7 @@ class Flow(object):
                 last_read[symbol] = other
             symbols.difference_update(other.reads)
 
-        return set(itervalues(last_read))
+        return set(last_read.values())
 
     def graph(self):
         graph = []
