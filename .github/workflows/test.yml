@@ -1,0 +1,37 @@
+name: Test
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.8"
+      - name: Install Poetry
+        run: |
+          curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python - --version 1.1.12
+          $HOME/.poetry/bin/poetry config virtualenvs.create false
+      - name: Install dependencies
+        run: $HOME/.poetry/bin/poetry install --no-interaction
+      - name: flake8
+        run: flake8 --ignore=E731,W503
+      - name: Check for non-ASCII files
+        run: |
+          find staticflow tests -name '*.py' | (set +x; while read i; do
+              T=$(file -b --mime "$i")
+              if ! ( echo "$T" | grep -q ascii || echo "$T" | grep -q empty ) ; then
+                  echo "$i is not ASCII"
+                  exit 1
+              fi
+          done)
+      - name: Check logging usage
+        run: |
+          find staticflow tests -name '*.py' -exec sh -c "grep 'logging\\.\\(debug\\|warning\\|critical\\|error\\|info\\)' \"\$@\" && exit 1; exit 0" {} +
+      - name: Run tests
+        run: python -m unittest discover -s tests
