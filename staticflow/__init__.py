@@ -465,7 +465,3 @@ def main(args=None):
         for f in deps:
             sys.stdout.write('    "%s" -> "%s";\n' % (names[f], names[t]))
     sys.stdout.write('}\n')
-
-
-if __name__ == '__main__':
-    sys.exit(main())

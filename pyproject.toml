@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "staticflow"
+version = "0.1"
+description = "Construct a data flow from static analysis of Python code"
+
+license = "BSD-3-Clause"
+
+authors = [
+    "Remi Rampin <remi@rampin.org>",
+]
+
+readme = "README.rst"
+
+repository = "http://github.com/VIDA-NYU/python-staticflow"
+
+keywords = [
+    "python", "analysis", "ast", "dataflow", "flow", "provenance",
+    "dependencies", "vida", "nyu",
+]
+
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.7,<4"
+
+[tool.poetry.dev-dependencies]
+flake8 = "*"
+
+[tool.poetry.scripts]
+staticflow = "staticflow:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
