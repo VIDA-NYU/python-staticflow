@@ -45,12 +45,16 @@ class Symbol(object):
             self.state = self.READ_THEN_WRITTEN
 
     def is_read(self):
-        return (self.state == self.READ or
-                self.state == self.READ_THEN_WRITTEN)
+        return (
+            self.state == self.READ
+            or self.state == self.READ_THEN_WRITTEN
+        )
 
     def is_written(self):
-        return (self.state == self.CREATED or
-                self.state == self.READ_THEN_WRITTEN)
+        return (
+            self.state == self.CREATED
+            or self.state == self.READ_THEN_WRITTEN
+        )
 
 
 class _CellVisitor(ast.NodeVisitor):
@@ -296,8 +300,10 @@ class Cell(object):
             logger.info("Parsing cell: %r", source)
         else:
             self.source = ast.parse(source)
-            logger.info("Parsing cell:\n----------\n%s\n----------",
-                        source.strip('\n'))
+            logger.info(
+                "Parsing cell:\n----------\n%s\n----------",
+                source.strip('\n'),
+            )
 
         self.reads = set()
         self.writes = set()
@@ -310,9 +316,11 @@ class Cell(object):
             if symbol.is_written():
                 self.writes.add(name)
 
-        logger.info("Parsing done!\n  reads: %s\n  writes: %s",
-                    ', '.join(self.reads),
-                    ', '.join(self.writes))
+        logger.info(
+            "Parsing done!\n  reads: %s\n  writes: %s",
+            ', '.join(self.reads),
+            ', '.join(self.writes),
+        )
 
 
 class Flow(object):
@@ -338,8 +346,8 @@ class Flow(object):
         elif isinstance(cell, str):
             cell = Cell(cell)
         else:
-            raise TypeError("Expected iterable of Cell or strings, "
-                            "got %r" % type(cell))
+            raise TypeError(
+                "Expected iterable of Cell or strings, got %r" % type(cell))
 
         if cell.reads:
             for symbol in cell.reads:
@@ -440,8 +448,10 @@ def main(args=None):
     for filename in args:
         if filename.endswith('.ipynb'):
             if len(args) != 1:
-                sys.stderr.write("If analysing a Jupyter Notebook, it needs "
-                                 "to be the only file")
+                sys.stderr.write(
+                    "If analysing a Jupyter Notebook, it needs to be the only "
+                    + "file",
+                )
                 return 1
             raise NotImplementedError("No Jupyter Notebook support yet")
         else:
